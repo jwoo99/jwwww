@@ -1,65 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>ESP32 온습도 모니터링 (2567029 임지우)</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 50px; background-color: #f6f8fa; }
+    .data-box { display: inline-block; background: #fff; border: 1px solid #ccc; border-radius: 10px; padding: 20px 40px; margin: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+    .label { font-size: 1.2em; color: #444; }
+    .value { font-size: 2.5em; font-weight: bold; color: #0070c9; }
+    #status { margin-bottom: 20px; font-weight: bold; color: #00796b; }
+  </style>
+</head>
 <body>
-<img src="download.jpg">
-<h1>가보고 싶은 곳</h1>
-<p>서울에서 아직 가보지 못한 곳을 <br>음식 종류별로 나열</p>
-<a href="https://www.google.com/maps/">Google map!</a>
-<h2>밥</h2>
-<ol>
- <li>한식</li>
- <ul>
-  <li>엄용백 돼지국밥</li>
-  <li>을밀대 평양냉면</li>
-  <li>봉수육</li>
- </ul>
- <li>중식</li>
- <ul>
-  <li>만두란</li>
-  <li>청화원</li>
-  <li>랄라누들 연희사러가마트점</li>
-  <li>중경식객 홍대점</li>
- </ul>
- <li>일식</li>
-  <ul>
-  <li>멘츠루 신촌점</li>
-  <li>아이오밀</li>
- </ul>
- <li>기타</li>
-  <ul>
-  <li>타코스탠드</li>
-  <li>태국수</li>
-  <li>까이식당</li>
- </ul>
-</ol>
+  <h2>🌡️ 나의 웹 (2567029 임지우)</h2>
+  <div id="status">MQTT 연결 중...</div>
 
+  <div class="data-box">
+    <div class="label">온도 (°C)</div>
+    <div class="value" id="temp">--</div>
+  </div>
+  <div class="data-box">
+    <div class="label">습도 (%)</div>
+    <div class="value" id="hum">--</div>
+  </div>
 
-<h2>카페</h2>
-<ol>
- <li>베이커리</li>
- <ul>
-  <li>비피엠 파이엔타르트</li>
-  <li>스택베이커리</li>
-  <li>마이시크릿메이트</li>
-  <li>차타이무드</li>
- </ul>
- <li>젤라또</li>
- <ul>
-  <li>빙점강하력</li>
-  <li>피에트라</li>
- </ul>
- <li>카페</li>
-  <ul>
-  <li>트러블러스</li>
-  <li>아이오밀</li>
- </ul>
- <li>기타</li>
- <ul>
-  <li>모찌방</li>
-  <li>판초</li>
-</ol>
+  <div id="log" style="margin-top:20px;"></div>
 
-<a href="myweb-mqtt.html">my web mqtt</a>
+  <script>
+    const brokerUrl = 'wss://damoa.io:9002';
+    const topic = 'ewha/2567029';
+    const clientId = 'webclient-' + Math.random().toString(16).substr(2, 8);
 
+    const client = mqtt.connect(brokerUrl, { clientId });
+
+    const statusDiv = document.getElementById("status");
+    const tDiv = document.getElementById("temp");
+    const hDiv = document.getElementById("hum");
+    const logDiv = document.getElementById("log");
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      logDiv.innerHTML += `[${time}] ${msg}<br>`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    client.on('connect', () => {
+      statusDiv.textContent = "✅ MQTT 연결 성공!";
+      client.subscribe(topic, (err) => {
+        log(`토픽 구독 완료: ${topic}`);
+      });
+      client.publish("ewha/checkin", "2567029 임지우 웹페이지 접속");
+    });
+
+    client.on('message', (topic, message) => {
+      log(`메시지 수신: ${message}`);
+      try {
+        const data = JSON.parse(message);
+        if (data.temperature !== undefined) tDiv.textContent = data.temperature.toFixed(1);
+        if (data.humidity !== undefined) hDiv.textContent = data.humidity.toFixed(1);
+      } catch (e) {
+        log("⚠️ JSON 파싱 오류: " + e);
+      }
+    });
+
+    client.on('error', (err) => {
+      statusDiv.textContent = "❌ 브로커 연결 오류";
+      log("연결 에러: " + err.message);
+    });
+  </script>
 </body>
 </html>
