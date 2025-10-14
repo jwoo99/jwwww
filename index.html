@@ -50,7 +50,7 @@
       client.subscribe(topic, (err) => {
         log(`토픽 구독 완료: ${topic}`);
       });
-      client.publish("ewha/checkin", "2567029 임지우 웹페이지 접속");
+      client.publish("ewha/2567029", "2567029 임지우 웹페이지 접속");
     });
 
     client.on('message', (topic, message) => {
