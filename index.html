@@ -1,61 +1,85 @@
-
-
 <!DOCTYPE html>
 <html lang="ko">
-<h2>🌡️ 나의 웹 (2567029 임지우)</h2>
-  <div id="status">MQTT 연결 중...</div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>나의 웹 (2567029 임지우)</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+  
+  <style>
+    body { font-family: 'Malgun Gothic', sans-serif; text-align: center; padding: 20px; background: #f0f2f5; }
+    .container { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
+    .box { background: white; padding: 20px; width: 150px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .label { font-size: 1.1em; color: #666; margin-bottom: 10px; }
+    .val { font-size: 2.5em; font-weight: bold; color: #333; }
+    #status { color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; background: #999; font-size: 0.9em; }
+    #log { margin-top: 20px; font-size: 0.8em; color: #666; height: 100px; overflow-y: auto; border-top: 1px solid #ddd; padding-top: 10px;}
+  </style>
+</head>
+<body>
 
-  <div class="data-box">
-    <div class="label">온도 (°C)</div>
-    <div class="value" id="temp">--</div>
+  <h2>🌡️ 실시간 모니터링</h2>
+  <div id="status">연결 대기 중...</div>
+  
+  <div class="container">
+    <div class="box">
+      <div class="label">온도 (°C)</div>
+      <div class="val" id="temp">--</div>
+    </div>
+    <div class="box">
+      <div class="label">습도 (%)</div>
+      <div class="val" id="hum">--</div>
+    </div>
   </div>
-  <div class="data-box">
-    <div class="label">습도 (%)</div>
-    <div class="value" id="hum">--</div>
-  </div>
-
-  <div id="log" style="margin-top:20px;"></div>
+  
+  <div id="log">로그 대기 중...</div>
 
   <script>
-    const brokerUrl = 'wss://damoa.io:9002';
+    // 🛠️ 2. 도구가 로딩된 후에 이 스크립트가 실행됩니다.
+    
+    // EMQX 공용 브로커 설정
+    const brokerUrl = 'wss://broker.emqx.io:8084/mqtt'; 
     const topic = 'ewha/2567029';
-    const clientId = 'webclient-' + Math.random().toString(16).substr(2, 8);
 
-    const client = mqtt.connect(brokerUrl, { clientId });
+    // mqtt 변수가 이제는 정의되어 있으므로 에러가 나지 않습니다.
+    const client = mqtt.connect(brokerUrl, { 
+      clientId: 'web-' + Math.random().toString(16).substr(2, 8) 
+    });
 
     const statusDiv = document.getElementById("status");
     const tDiv = document.getElementById("temp");
     const hDiv = document.getElementById("hum");
     const logDiv = document.getElementById("log");
 
-    function log(msg) {
-      const time = new Date().toLocaleTimeString();
-      logDiv.innerHTML += `[${time}] ${msg}<br>`;
-      logDiv.scrollTop = logDiv.scrollHeight;
-    }
-
     client.on('connect', () => {
-      statusDiv.textContent = "✅ MQTT 연결 성공!";
+      statusDiv.textContent = "✅ 서버 연결 성공";
+      statusDiv.style.background = "#28a745"; // 초록색
+      console.log("연결 성공!");
+      
       client.subscribe(topic, (err) => {
-        log(`토픽 구독 완료: ${topic}`);
+        if(!err) console.log(`구독 성공: ${topic}`);
       });
-      client.publish("ewha/2567029", "2567029 임지우 웹페이지 접속");
     });
 
     client.on('message', (topic, message) => {
-      log(`메시지 수신: ${message}`);
+      const msgStr = message.toString();
+      console.log("데이터 받음:", msgStr);
+      logDiv.textContent = "수신: " + msgStr; // 화면 하단에 로그 표시
+      
       try {
-        const data = JSON.parse(message);
-        if (data.temperature !== undefined) tDiv.textContent = data.temperature.toFixed(1);
-        if (data.humidity !== undefined) hDiv.textContent = data.humidity.toFixed(1);
-      } catch (e) {
-        log("⚠️ JSON 파싱 오류: " + e);
+        const data = JSON.parse(msgStr);
+        if(data.temperature !== undefined) tDiv.textContent = Number(data.temperature).toFixed(1);
+        if(data.humidity !== undefined) hDiv.textContent = Number(data.humidity).toFixed(1);
+      } catch (e) { 
+        console.log("JSON 파싱 에러", e); 
       }
     });
 
     client.on('error', (err) => {
-      statusDiv.textContent = "❌ 브로커 연결 오류";
-      log("연결 에러: " + err.message);
+      statusDiv.textContent = "❌ 연결 오류";
+      statusDiv.style.background = "#dc3545"; // 빨간색
+      console.log("에러 발생:", err);
     });
   </script>
 </body>
